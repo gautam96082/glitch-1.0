@@ -1,5 +1,5 @@
 // ===== Redirect if not logged in =====
-if (!localStorage.getItem('loggedIn')) window.location.href = 'index.html';
+if(!localStorage.getItem('loggedIn')) window.location.href='index.html';
 
 // ===== Elements =====
 const conceptEl = document.getElementById('concept');
@@ -15,6 +15,11 @@ const logoutBtn = document.getElementById('logoutBtn');
 const themeToggle = document.getElementById('themeToggle');
 const voiceBtn = document.getElementById('voiceBtn');
 const pdfBtn = document.getElementById('pdfBtn');
+const profileEl = document.getElementById('profileName');
+
+// ===== Profile Icon =====
+const username = localStorage.getItem('loggedIn');
+if(profileEl) profileEl.textContent = username.charAt(0).toUpperCase();
 
 // ===== Complex Words =====
 const complexWords = [
@@ -23,33 +28,7 @@ const complexWords = [
   "paradigm","stochastic","heuristic","ontology","epistemology",
   "thermodynamics","synthesis","anomaly","spectroscopy","isotope"
 ];
-const complexSet = new Set(complexWords.map(w => w.toLowerCase()));
-
-// ===== Helper Functions =====
-function cleanWord(word) { return word.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g,''); }
-function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-// ===== Highlight & Stats =====
-function highlight(text) {
-  const tokens = text.split(/(\s+)/);
-  const html = tokens.map(tok => {
-    if (/^\s+$/.test(tok)) return tok.replace(/\n/g,'<br>');
-    const core = cleanWord(tok);
-    if (!core) return escapeHtml(tok);
-    if (complexSet.has(core.toLowerCase())) {
-      return `<span class="highlight" data-tip="Consider simpler word">${escapeHtml(tok)}</span>`;
-    }
-    return escapeHtml(tok);
-  }).join('');
-  outputBox.innerHTML = html || "<span class='small'>No output</span>";
-
-  // Stats
-  const words = text.split(/\s+/).map(w=>cleanWord(w)).filter(Boolean);
-  const count = [...new Set(words.filter(w=>complexSet.has(w.toLowerCase())))].length;
-  const readability = Math.round(206.835 - 1.015*(words.length/Math.max(1, (text.match(/[.!?]+/g)||[]).length)) - 84.6*(words.reduce((a,w)=>a+Math.max(1,w.match(/[aeiouy]{1,2}/gi)?.length||1),0)/Math.max(1, words.length)));
-  jargonCountEl.textContent = count ? `Jargon: ${count}` : '';
-  readScoreEl.textContent = `Readability: ${readability}`;
-}
+const complexSet = new Set(complexWords.map(w=>w.toLowerCase()));
 
 // ===== Auto-simplify Map =====
 const simpleMap = {
@@ -62,18 +41,50 @@ const simpleMap = {
   "algorithm":"step-by-step recipe",
   "entropy":"measure of disorder",
   "hypothesis":"idea to test",
-  "paradigm":"way of thinking"
+  "paradigm":"way of thinking",
+  "thermodynamics":"study of heat",
+  "synthesis":"combination",
+  "anomaly":"irregularity",
+  "spectroscopy":"study of light",
+  "isotope":"variant of element"
 };
-function autoSimplify(text) {
+
+// ===== Helpers =====
+function cleanWord(word){ return word.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g,''); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// ===== Highlight & Stats =====
+function highlight(text){
   const tokens = text.split(/(\s+)/);
-  return tokens.map(tok => {
-    if (/^\s+$/.test(tok)) return tok;
+  const html = tokens.map(tok=>{
+    if(/^\s+$/.test(tok)) return tok.replace(/\n/g,'<br>');
     const core = cleanWord(tok);
-    if (!core) return tok;
+    if(!core) return escapeHtml(tok);
+    if(complexSet.has(core.toLowerCase())){
+      return `<span class="highlight" data-tip="Simpler: ${simpleMap[core.toLowerCase()]||'check wiki'}">${escapeHtml(tok)}</span>`;
+    }
+    return escapeHtml(tok);
+  }).join('');
+  outputBox.innerHTML = html || "<span class='small'>No output</span>";
+
+  const words = text.split(/\s+/).map(cleanWord).filter(Boolean);
+  const count = [...new Set(words.filter(w=>complexSet.has(w.toLowerCase())))].length;
+  const readability = Math.round(206.835 - 1.015*(words.length/Math.max(1,(text.match(/[.!?]+/g)||[]).length)) - 84.6*(words.reduce((a,w)=>a+Math.max(1,w.match(/[aeiouy]{1,2}/gi)?.length||1),0)/Math.max(1,words.length)));
+  jargonCountEl.textContent = count?`Jargon: ${count}`:'';
+  readScoreEl.textContent = `Readability: ${readability}`;
+}
+
+// ===== Auto-simplify =====
+function autoSimplify(text){
+  const tokens = text.split(/(\s+)/);
+  return tokens.map(tok=>{
+    if(/^\s+$/.test(tok)) return tok;
+    const core = cleanWord(tok);
+    if(!core) return tok;
     const low = core.toLowerCase();
-    if (simpleMap[low]) {
-      const prefix = tok.match(/^[^a-zA-Z]*/)[0] || '';
-      const suffix = tok.match(/[^a-zA-Z]*$/)[0] || '';
+    if(simpleMap[low]){
+      const prefix = tok.match(/^[^a-zA-Z]*/)[0]||'';
+      const suffix = tok.match(/[^a-zA-Z]*$/)[0]||'';
       return prefix + simpleMap[low] + suffix;
     }
     return tok;
@@ -81,15 +92,45 @@ function autoSimplify(text) {
 }
 
 // ===== History =====
-function addHistory(concept, explanation) {
+function addHistory(concept, explanation){
   const li = document.createElement('li');
-  li.textContent = `${concept}: ${explanation.substring(0,50)}${explanation.length>50?'...':''}`;
+  li.innerHTML = `<strong>${escapeHtml(concept)}</strong>: ${escapeHtml(explanation.substring(0,50))}${explanation.length>50?'...':''}`;
+  li.addEventListener('click', ()=>{
+    explanationEl.value = explanation;
+    conceptEl.value = concept;
+    highlight(explanation);
+  });
   historyList.prepend(li);
 }
 
+// ===== Buttons =====
+simplifyBtn.addEventListener('click', ()=>{
+  if(!explanationEl.value.trim()){ alert('Write explanation first'); return; }
+  highlight(explanationEl.value);
+  addHistory(conceptEl.value||'Untitled', explanationEl.value);
+});
+
+autoSimplifyBtn.addEventListener('click', ()=>{
+  if(!explanationEl.value.trim()){ alert('Write explanation first'); return; }
+  const simplified = autoSimplify(explanationEl.value);
+  if(simplified===explanationEl.value){ alert('No simplifications available'); return; }
+  if(confirm('Replace with simpler text?')) explanationEl.value=simplified;
+  highlight(simplified);
+  addHistory(conceptEl.value||'Untitled', simplified);
+});
+
+clearBtn.addEventListener('click', ()=>{
+  if(!confirm('Clear all?')) return;
+  conceptEl.value='';
+  explanationEl.value='';
+  outputBox.innerHTML='';
+  jargonCountEl.textContent='';
+  readScoreEl.textContent='';
+});
+
 // ===== Voice Input =====
 voiceBtn.addEventListener('click', ()=>{
-  if (!('webkitSpeechRecognition' in window)) { alert('Voice input not supported'); return; }
+  if(!('webkitSpeechRecognition' in window)){ alert('Voice input not supported'); return; }
   const recognition = new webkitSpeechRecognition();
   recognition.lang = 'en-US';
   recognition.onresult = e => { explanationEl.value += ' ' + e.results[0][0].transcript; };
@@ -98,39 +139,18 @@ voiceBtn.addEventListener('click', ()=>{
 
 // ===== PDF Export =====
 pdfBtn.addEventListener('click', ()=>{
-  if (!outputBox.innerHTML) { alert('No output to export'); return; }
+  if(!outputBox.innerHTML){ alert('No output to export'); return; }
   html2pdf().from(outputBox).set({ margin:0.5, filename:'FeynmanOutput.pdf' }).save();
 });
 
 // ===== Theme Toggle =====
 themeToggle.addEventListener('click', ()=>{
   document.body.classList.toggle('dark-mode');
-  themeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀ Light Mode':'🌙 Dark Mode';
+  themeToggle.textContent = document.body.classList.contains('dark-mode')?'☀ Light Mode':'🌙 Dark Mode';
 });
 
 // ===== Logout =====
 logoutBtn.addEventListener('click', ()=>{
   localStorage.removeItem('loggedIn');
   window.location.href='index.html';
-});
-
-// ===== Simplify / Auto-simplify / Clear =====
-simplifyBtn.addEventListener('click', ()=>{
-  if(!explanationEl.value.trim()){ alert('Write an explanation first'); return; }
-  highlight(explanationEl.value);
-  addHistory(conceptEl.value || 'Untitled', explanationEl.value);
-});
-
-autoSimplifyBtn.addEventListener('click', ()=>{
-  if(!explanationEl.value.trim()){ alert('Write an explanation first'); return; }
-  const simplified = autoSimplify(explanationEl.value);
-  if(simplified === explanationEl.value){ alert('No simplifications available'); return; }
-  if(confirm('Replace your text with simpler suggestions?')) explanationEl.value = simplified;
-  highlight(simplified);
-  addHistory(conceptEl.value || 'Untitled', simplified);
-});
-
-clearBtn.addEventListener('click', ()=>{
-  if(!confirm('Clear all input and output?')) return;
-  conceptEl.value=''; explanationEl.value=''; outputBox.innerHTML=''; jargonCountEl.textContent=''; readScoreEl.textContent='';
 });

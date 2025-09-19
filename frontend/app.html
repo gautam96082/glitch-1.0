@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Feynman Technique Assistant</title>
+<title>Feynman Assistant</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Navigation Bar -->
+<!-- Navbar -->
 <nav class="navbar card">
   <h1>Feynman Assistant</h1>
-  <div>
+  <div class="nav-right">
+    <span id="profileName" class="profile-icon"></span>
     <button id="themeToggle" class="btn-secondary">🌙 Dark Mode</button>
     <button id="logoutBtn" class="btn-clear">Logout</button>
   </div>
 </nav>
 
-<main class="card" role="main">
+<main class="card main-card">
   <label for="concept">Concept</label>
   <input id="concept" type="text" placeholder="e.g., Quantum Entanglement">
 
@@ -35,13 +36,13 @@
   <div class="output-area">
     <div class="meta">
       <span class="small">Highlighted Output</span>
-      <span id="jargonCount" class="small" style="margin-left:8px;"></span>
+      <span id="jargonCount" class="small"></span>
       <span id="readScore" class="small" style="margin-left:auto;"></span>
     </div>
     <div id="outputBox" class="box"></div>
   </div>
 
-  <div class="card" style="margin-top:20px;">
+  <div class="card history-card">
     <h2>History</h2>
     <ul id="historyList"></ul>
   </div>
