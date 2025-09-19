@@ -1,108 +1,95 @@
-/* ===== Login Logic ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  const loginForm = document.getElementById("loginForm");
-  const logoutBtn = document.getElementById("logoutBtn");
+// Complex words for highlighting
+const complexWords = ["quantum","entanglement","phenomenon","entropy","hypothesis"];
 
-  // Handle Login
-  if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
+// DOM Elements
+const conceptInput = document.getElementById("concept");
+const explanationInput = document.getElementById("explanation");
+const outputDiv = document.getElementById("output");
+const simplifyBtn = document.getElementById("simplifyBtn");
+const clearBtn = document.getElementById("clearBtn");
+const wordCount = document.getElementById("wordCount");
+const voiceBtn = document.getElementById("voiceBtn");
+const saveHistoryBtn = document.getElementById("saveHistoryBtn");
+const historyList = document.getElementById("historyList");
+const exportPdfBtn = document.getElementById("exportPdfBtn");
+const toggleThemeBtn = document.getElementById("toggleTheme");
 
-      if (username && password) {
-        localStorage.setItem("loggedInUser", username);
-        window.location.href = "app.html";
-      } else {
-        alert("Please enter both username and password.");
-      }
-    });
+// Simplify function
+simplifyBtn.addEventListener("click", () => {
+  let text = explanationInput.value;
+  if (!text.trim()) {
+    alert("Please write something first!");
+    return;
   }
 
-  // Handle Logout
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("loggedInUser");
-      window.location.href = "index.html";
-    });
-  }
+  let words = text.split(" ");
+  let highlighted = words.map(word => {
+    return complexWords.includes(word.toLowerCase()) 
+      ? `<span style="background:yellow;">${word}</span>` 
+      : word;
+  }).join(" ");
 
-  // Check session on app page
-  if (window.location.pathname.includes("app.html") && !localStorage.getItem("loggedInUser")) {
-    window.location.href = "index.html";
-  }
+  outputDiv.innerHTML = highlighted;
 });
 
-/* ===== Main App Logic ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  const conceptEl = document.getElementById("concept");
-  const explanationEl = document.getElementById("explanation");
-  const simplifyBtn = document.getElementById("simplifyBtn");
-  const autoSimplifyBtn = document.getElementById("autoSimplifyBtn");
-  const clearBtn = document.getElementById("clearBtn");
-  const outputBox = document.getElementById("outputBox");
-  const jargonCountEl = document.getElementById("jargonCount");
-  const readScoreEl = document.getElementById("readScore");
+// Clear function
+clearBtn.addEventListener("click", () => {
+  conceptInput.value = "";
+  explanationInput.value = "";
+  outputDiv.innerHTML = "";
+  wordCount.textContent = "Words: 0 | Characters: 0";
+});
 
-  if (!simplifyBtn) return; // Prevent errors on login page
+// Word count
+explanationInput.addEventListener("input", () => {
+  const text = explanationInput.value.trim();
+  const words = text.split(/\s+/).filter(Boolean).length;
+  wordCount.textContent = `Words: ${words} | Characters: ${text.length}`;
+});
 
-  const complexWords = [
-    "quantum", "entanglement", "phenomenon", "correlated",
-    "relativity", "algorithm", "entropy", "hypothesis"
-  ];
+// Voice Input
+voiceBtn.addEventListener("click", () => {
+  if (!('webkitSpeechRecognition' in window)) {
+    alert("Voice recognition not supported in this browser.");
+    return;
+  }
 
-  const simpleMap = {
-    phenomenon: "event",
-    entanglement: "deep connection",
-    correlated: "linked",
-    relativity: "relationship with motion and gravity",
-    algorithm: "step-by-step recipe",
-    entropy: "measure of disorder",
-    hypothesis: "idea to test"
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.onresult = (event) => {
+    explanationInput.value += " " + event.results[0][0].transcript;
   };
+  recognition.start();
+});
 
-  function highlightText(text) {
-    return text
-      .split(/\s+/)
-      .map(word =>
-        complexWords.includes(word.toLowerCase())
-          ? `<span class="highlight">${word}</span>`
-          : word
-      )
-      .join(" ");
+// Save to History
+saveHistoryBtn.addEventListener("click", () => {
+  const concept = conceptInput.value.trim();
+  const explanation = explanationInput.value.trim();
+  if (!concept || !explanation) {
+    alert("Please enter concept and explanation first!");
+    return;
   }
 
-  function readabilityScore(text) {
-    const words = text.split(/\s+/).filter(Boolean).length || 1;
-    return 200 - words * 2; // simplified readability score
-  }
-
-  simplifyBtn.addEventListener("click", () => {
-    const explanation = explanationEl.value.trim();
-    if (!explanation) {
-      alert("Please enter an explanation first!");
-      return;
-    }
-    outputBox.innerHTML = highlightText(explanation);
-    jargonCountEl.textContent = `Jargon: ${complexWords.filter(w => explanation.toLowerCase().includes(w)).length}`;
-    readScoreEl.textContent = `Readability Score: ${readabilityScore(explanation)}`;
+  const item = document.createElement("li");
+  item.textContent = concept;
+  item.addEventListener("click", () => {
+    explanationInput.value = explanation;
+    outputDiv.innerHTML = explanation;
   });
+  historyList.appendChild(item);
 
-  autoSimplifyBtn.addEventListener("click", () => {
-    let explanation = explanationEl.value.trim();
-    if (!explanation) return alert("Please enter an explanation first!");
-    for (let [key, value] of Object.entries(simpleMap)) {
-      explanation = explanation.replace(new RegExp(key, "gi"), value);
-    }
-    explanationEl.value = explanation;
-    outputBox.innerHTML = highlightText(explanation);
-  });
+  localStorage.setItem(`history-${concept}`, explanation);
+  alert("Saved to history!");
+});
 
-  clearBtn.addEventListener("click", () => {
-    conceptEl.value = "";
-    explanationEl.value = "";
-    outputBox.innerHTML = "";
-    jargonCountEl.textContent = "";
-    readScoreEl.textContent = "";
-  });
+// Export to PDF
+exportPdfBtn.addEventListener("click", () => {
+  const element = document.getElementById("output");
+  html2pdf().from(element).save(`${conceptInput.value}-explanation.pdf`);
+});
+
+// Dark Mode Toggle
+toggleThemeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
 });
