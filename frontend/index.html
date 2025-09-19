@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Feynman Technique Assistant — Single File</title>
+  <style>
+    /* ====== Basic Reset & Layout ====== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: #f4f6fa;
+      color: #222;
+      padding: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .card {
+      width: 100%;
+      max-width: 900px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(21,32,43,0.08);
+      padding: 22px;
+    }
+
+    h1 { text-align: left; font-size: 22px; margin-bottom: 6px; color: #1f2937; }
+    p.tag { color: #6b7280; margin-bottom: 18px; }
+
+    label { display:block; font-weight:600; margin-top:12px; color:#374151; }
+    input[type="text"], textarea {
+      width:100%;
+      padding:10px 12px;
+      margin-top:8px;
+      border:1px solid #e6edf3;
+      border-radius:8px;
+      font-size:15px;
+      background:#fbfdff;
+    }
+    textarea { min-height:130px; resize:vertical; }
+
+    .controls { display:flex; gap:10px; margin-top:14px; }
+    button {
+      padding:10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight:600;
+      cursor:pointer;
+      transition: transform .08s ease, box-shadow .12s ease;
+      box-shadow: 0 4px 12px rgba(16,24,40,0.06);
+    }
+    button:active { transform: translateY(1px); }
+    .btn-primary { background:#10b981; color:#fff; }
+    .btn-clear { background:#ef4444; color:#fff; }
+    .btn-secondary { background:#374151; color:#fff; }
+
+    .output-area { margin-top:20px; }
+    .meta { display:flex; gap:12px; align-items:center; margin-bottom:8px; color:#6b7280; font-size:14px; }
+    .box {
+      background:#fbfdff;
+      border:1px solid #e6edf3;
+      padding:14px;
+      border-radius:8px;
+      min-height:120px;
+      line-height:1.5;
+      color:#111827;
+    }
+
+    /* Highlight style & tooltip */
+    .highlight {
+      background: linear-gradient(90deg,#fff59d,#fff176);
+      padding:2px 4px;
+      border-radius:4px;
+      font-weight:700;
+      position:relative;
+      cursor:help;
+    }
+    .highlight[data-tip]::after {
+      content: attr(data-tip);
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%) translateY(-8px) scale(0);
+      bottom:100%;
+      background:#111827;
+      color:#fff;
+      padding:6px 8px;
+      border-radius:6px;
+      white-space:nowrap;
+      font-size:12px;
+      opacity:0;
+      transition:opacity .12s ease, transform .12s ease;
+      pointer-events:none;
+    }
+    .highlight:hover::after { opacity:1; transform: translateX(-50%) translateY(-12px) scale(1); }
+
+    .small { font-size:13px; color:#6b7280; }
+
+    /* Responsive */
+    @media (max-width:640px){
+      .controls { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Feynman Technique Assistant</h1>
+    <p class="tag">Concept ko simple banane me madad kare — likho, simplify karo, aur seekho.</p>
+
+    <label for="concept">Concept (chhota naam)</label>
+    <input id="concept" type="text" placeholder="e.g., Quantum Entanglement" />
+
+    <label for="explanation">Your Explanation</label>
+    <textarea id="explanation" placeholder="Apne shabdon me samjhao..."></textarea>
+
+    <div class="controls" aria-hidden="false">
+      <button id="simplifyBtn" class="btn-primary">Simplify</button>
+      <button id="autoSimplifyBtn" class="btn-secondary">Auto-simplify (suggest)</button>
+      <button id="clearBtn" class="btn-clear">Clear</button>
+    </div>
+
+    <div class="output-area" aria-live="polite">
+      <div class="meta">
+        <span class="small">Highlighted Output</span>
+        <span id="jargonCount" class="small" style="margin-left:8px;"></span>
+        <span id="readScore" class="small" style="margin-left:auto;"></span>
+      </div>
+      <div id="outputBox" class="box" role="region" aria-label="Highlighted explanation"></div>
+    </div>
+  </main>
+
+  <script>
+    /***** ======== Single-file modular JS (keeps functions grouped) ======== *****/
+
+    /* ---------- Complex Words List (MVP static) ---------- */
+    const ComplexWordsModule = (() => {
+      // You can expand this list or load from server later
+      const words = [
+        "quantum","entanglement","phenomenon","correlated","relativity",
+        "metaphysics","neuroscience","algorithm","entropy","hypothesis",
+        "paradigm","stochastic","heuristic","ontology","epistemology",
+        "thermodynamics","synthesis","anomaly","spectroscopy","isotope"
+      ];
+      // Map for quick lookup
+      const set = new Set(words.map(w => w.toLowerCase()));
+      return { isComplex: w => set.has(w.toLowerCase()), getList: () => words };
+    })();
+
+    /* ---------- Text Processor Module ---------- */
+    const TextProcessorModule = (() => {
+
+      // Clean punctuation but keep original for display
+      function cleanWord(word) {
+        return word.replace(/^[^0-9A-Za-z\u00C0-\u017F]+|[^0-9A-Za-z\u00C0-\u017F]+$/g, "");
+      }
+
+      // Highlight difficult words — returns HTML string
+      function highlightComplexWords(text) {
+        if (!text) return "";
+        // Split into tokens preserving spaces/newlines
+        const tokens = text.split(/(\s+)/); // keeps whitespace tokens
+        const html = tokens.map(tok => {
+          // if whitespace, return as-is (escape)
+          if (/^\s+$/.test(tok)) return tok.replace(/\n/g, "<br>");
+          const core = cleanWord(tok);
+          if (!core) return escapeHtml(tok);
+          if (ComplexWordsModule.isComplex(core)) {
+            // tooltip sample: "Consider simpler word"
+            const tip = "Consider using a simpler word or example";
+            return `<span class="highlight" data-tip="${escapeHtml(tip)}">${escapeHtml(tok)}</span>`;
+          }
+          return escapeHtml(tok);
+        }).join("");
+        return html;
+      }
+
+      // Very small syllable estimator for readability (approx)
+      function estimateSyllables(word) {
+        word = word.toLowerCase();
+        if (word.length <= 3) return 1;
+        // crude heuristic
+        const matches = word.match(/[aeiouy]{1,2}/g);
+        return matches ? matches.length : 1;
+      }
+
+      function readabilityScore(text) {
+        // Flesch–Kincaid-like: higher is easier. We'll compute a simple score.
+        const sentences = (text.match(/[.!?]+/g) || [""]).length;
+        const wordsArr = text.trim().split(/\s+/).filter(Boolean);
+        const words = wordsArr.length || 1;
+        const syllables = wordsArr.reduce((s,w) => s + estimateSyllables(w.replace(/[^a-zA-Z]/g,"")), 0) || 1;
+
+        // Flesch Reading Ease approximation
+        const score = 206.835 - 1.015 * (words / Math.max(1,sentences)) - 84.6 * (syllables / words);
+        return Math.round(score);
+      }
+
+      // Count how many complex words are present
+      function countComplex(text) {
+        const wordsArr = text.toLowerCase().split(/\s+/).map(w => cleanWord(w)).filter(Boolean);
+        const seen = {};
+        let count = 0;
+        wordsArr.forEach(w => {
+          if (ComplexWordsModule.isComplex(w) && !seen[w]) { count++; seen[w]=1; }
+        });
+        return count;
+      }
+
+      // Basic auto-simplify suggestion using local mapping (MVP)
+      const simpleMap = {
+        "phenomenon":"event",
+        "entanglement":"deep connection",
+        "correlated":"linked",
+        "relativity":"relationship with motion and gravity",
+        "metaphysics":"big questions about reality",
+        "neuroscience":"study of the brain",
+        "algorithm":"step-by-step recipe",
+        "entropy":"measure of disorder",
+        "hypothesis":"an idea to test",
+        "paradigm":"way of thinking"
+      };
+
+      function autoSimplify(text) {
+        // Replace complex words with suggestions (non-destructive, returns suggested text)
+        const tokens = text.split(/(\s+)/);
+        return tokens.map(tok => {
+          if (/^\s+$/.test(tok)) return tok;
+          const core = cleanWord(tok);
+          if (!core) return tok;
+          const low = core.toLowerCase();
+          if (simpleMap[low]) {
+            // keep original punctuation
+            const prefix = tok.match(/^[^0-9A-Za-z\u00C0-\u017F]*/)[0] || "";
+            const suffix = tok.match(/[^0-9A-Za-z\u00C0-\u017F]*$/)[0] || "";
+            return prefix + simpleMap[low] + suffix;
+          }
+          return tok;
+        }).join("");
+      }
+
+      // Escape html
+      function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, function (m) {
+          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];
+        });
+      }
+
+      return {
+        highlightComplexWords,
+        readabilityScore,
+        countComplex,
+        autoSimplify
+      };
+    })();
+
+    /* ---------- Storage Module (localStorage) ---------- */
+    const StorageModule = (() => {
+      const KEY_CONCEPT = "feynman_concept_v1";
+      const KEY_EXPLAIN = "feynman_explain_v1";
+      function save(concept, explanation) {
+        try {
+          localStorage.setItem(KEY_CONCEPT, concept);
+          localStorage.setItem(KEY_EXPLAIN, explanation);
+        } catch (e) { /* ignore */ }
+      }
+      function load() {
+        return {
+          concept: localStorage.getItem(KEY_CONCEPT) || "",
+          explanation: localStorage.getItem(KEY_EXPLAIN) || ""
+        };
+      }
+      function clear() {
+        localStorage.removeItem(KEY_CONCEPT);
+        localStorage.removeItem(KEY_EXPLAIN);
+      }
+      return { save, load, clear };
+    })();
+
+    /* ---------- UI & Events Module ---------- */
+    (function App(){
+      // Elements
+      const conceptEl = document.getElementById("concept");
+      const explanationEl = document.getElementById("explanation");
+      const simplifyBtn = document.getElementById("simplifyBtn");
+      const autoSimplifyBtn = document.getElementById("autoSimplifyBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const outputBox = document.getElementById("outputBox");
+      const jargonCountEl = document.getElementById("jargonCount");
+      const readScoreEl = document.getElementById("readScore");
+
+      // Load saved
+      (function init() {
+        const s = StorageModule.load();
+        conceptEl.value = s.concept;
+        explanationEl.value = s.explanation;
+        if (s.explanation) renderHighlights(s.explanation);
+      })();
+
+      // Render highlights and meta
+      function renderHighlights(text) {
+        const html = TextProcessorModule.highlightComplexWords(text);
+        outputBox.innerHTML = html || "<span class='small'>Koi output nahi — pehle explanation likho aur Simplify dabao.</span>";
+        const count = TextProcessorModule.countComplex(text);
+        const score = TextProcessorModule.readabilityScore(text);
+        jargonCountEl.textContent = count ? `Jargon: ${count}` : "";
+        readScoreEl.textContent = `Readability score: ${score}`;
+      }
+
+      simplifyBtn.addEventListener("click", () => {
+        const concept = conceptEl.value.trim();
+        const explanation = explanationEl.value.trim();
+        if (!explanation) { alert("Please write an explanation first."); explanationEl.focus(); return; }
+        renderHighlights(explanation);
+        StorageModule.save(concept, explanation);
+      });
+
+      autoSimplifyBtn.addEventListener("click", () => {
+        const explanation = explanationEl.value.trim();
+        if (!explanation) { alert("Please write an explanation first."); explanationEl.focus(); return; }
+        const suggested = TextProcessorModule.autoSimplify(explanation);
+        // Show suggestion in a prompt-like editable modal? For simplicity, we will ask confirm and replace.
+        if (suggested === explanation) {
+          alert("No auto-suggestions available for the words used.");
+          return;
+        }
+        const ok = confirm("Auto-simplify suggestions ready.\nPress OK to replace your text with suggested simpler version (you can undo by pressing Cancel).");
+        if (ok) {
+          explanationEl.value = suggested;
+          renderHighlights(suggested);
+          StorageModule.save(conceptEl.value.trim(), suggested);
+        } else {
+          // show highlighted suggestion in output only
+          renderHighlights(suggested);
+        }
+      });
+
+      clearBtn.addEventListener("click", () => {
+        if (!confirm("Are you sure you want to clear the concept & explanation?")) return;
+        conceptEl.value = "";
+        explanationEl.value = "";
+        outputBox.innerHTML = "";
+        jargonCountEl.textContent = "";
+        readScoreEl.textContent = "";
+        StorageModule.clear();
+      });
+
+      // keyboard shortcut: Ctrl+Enter -> simplify
+      explanationEl.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key === "Enter") simplifyBtn.click();
+      });
+
+      // Accessibility: allow clicking highlighted spans to show an alert with tip
+      outputBox.addEventListener("click", (e) => {
+        const tgt = e.target;
+        if (tgt.classList && tgt.classList.contains("highlight")) {
+          const tip = tgt.getAttribute("data-tip") || "Try rephrasing this word.";
+          // small ephemeral tooltip already exists on hover; we also show an alert for mobile
+          if (window.matchMedia("(hover: none)").matches) {
+            alert(tip);
+          }
+        }
+      });
+
+    })();
+
+    /***** End of JS *****/
+  </script>
+</body>
+</html>
