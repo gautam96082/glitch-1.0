@@ -1,54 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Feynman Technique Assistant</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feynman Technique Assistant</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Feynman Technique Assistant</h1>
-    <button id="logoutBtn" class="btn-secondary">Logout</button>
-  </header>
 
-  <main class="container">
-    <!-- Concept Input -->
-    <section class="card">
-      <h2>Enter Your Concept</h2>
-      <input type="text" id="concept" placeholder="Concept (e.g., Newton's Law)">
-      <textarea id="explanation" placeholder="Explain the concept in your own words..."></textarea>
+<!-- Navigation Bar -->
+<nav class="navbar card">
+  <h1>Feynman Assistant</h1>
+  <div>
+    <button id="themeToggle" class="btn-secondary">🌙 Dark Mode</button>
+    <button id="logoutBtn" class="btn-clear">Logout</button>
+  </div>
+</nav>
 
-      <!-- Word & Character Count -->
-      <p id="countInfo">Words: 0 | Characters: 0</p>
+<main class="card" role="main">
+  <label for="concept">Concept</label>
+  <input id="concept" type="text" placeholder="e.g., Quantum Entanglement">
 
-      <!-- Buttons -->
-      <div class="actions">
-        <button id="simplifyBtn" class="btn-primary">Simplify</button>
-        <button id="clearBtn" class="btn-secondary">Clear</button>
-        <button id="voiceBtn" class="btn-primary">🎤 Voice Input</button>
-        <button id="exportPdfBtn" class="btn-secondary">📄 Export PDF</button>
-        <button id="toggleThemeBtn" class="btn-secondary">🌙 Toggle Theme</button>
-      </div>
-    </section>
+  <label for="explanation">Your Explanation</label>
+  <textarea id="explanation" placeholder="Write your explanation here..."></textarea>
 
-    <!-- Output -->
-    <section class="card">
-      <h2>Output</h2>
-      <div id="output" class="output-box">
-        <p>Your simplified text will appear here...</p>
-      </div>
-    </section>
+  <div class="controls">
+    <button id="simplifyBtn" class="btn-primary">Simplify</button>
+    <button id="autoSimplifyBtn" class="btn-secondary">Auto-simplify</button>
+    <button id="voiceBtn" class="btn-secondary">🎤 Voice Input</button>
+    <button id="pdfBtn" class="btn-secondary">📄 Export PDF</button>
+    <button id="clearBtn" class="btn-clear">Clear</button>
+  </div>
 
-    <!-- History Panel -->
-    <section class="card">
-      <h2>History</h2>
-      <ul id="historyList"></ul>
-    </section>
-  </main>
+  <div class="output-area">
+    <div class="meta">
+      <span class="small">Highlighted Output</span>
+      <span id="jargonCount" class="small" style="margin-left:8px;"></span>
+      <span id="readScore" class="small" style="margin-left:auto;"></span>
+    </div>
+    <div id="outputBox" class="box"></div>
+  </div>
 
-  <!-- ✅ Added CDN for html2pdf.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="script.js"></script>
+  <div class="card" style="margin-top:20px;">
+    <h2>History</h2>
+    <ul id="historyList"></ul>
+  </div>
+</main>
+
+<script src="html2pdf.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

@@ -1,47 +1,29 @@
-const loginForm = document.getElementById("loginForm");
-const registerForm = document.getElementById("registerForm");
-const registerLink = document.getElementById("registerLink");
-const loginLink = document.getElementById("loginLink");
+// Simple localStorage auth (MVP)
+const usernameEl = document.getElementById('username');
+const passwordEl = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
 
-// Switch forms
-registerLink.addEventListener("click", () => {
-  loginForm.classList.add("hidden");
-  registerForm.classList.remove("hidden");
-});
-loginLink.addEventListener("click", () => {
-  registerForm.classList.add("hidden");
-  loginForm.classList.remove("hidden");
-});
+loginBtn.addEventListener('click', () => {
+    const user = usernameEl.value.trim();
+    const pass = passwordEl.value.trim();
+    if(!user || !pass){ alert('Enter username and password'); return; }
 
-// Register
-registerForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const username = document.getElementById("newUsername").value.trim();
-  const password = document.getElementById("newPassword").value.trim();
-
-  if (!username || !password) {
-    alert("Please fill all fields!");
-    return;
-  }
-
-  localStorage.setItem(username, password);
-  alert("Registration successful!");
-  registerForm.reset();
-  registerForm.classList.add("hidden");
-  loginForm.classList.remove("hidden");
+    const stored = JSON.parse(localStorage.getItem('users')||'{}');
+    if(stored[user] && stored[user]===pass){
+        localStorage.setItem('loggedIn', user);
+        window.location.href = 'app.html';
+    } else alert('Invalid credentials');
 });
 
-// Login
-loginForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+registerBtn.addEventListener('click', () => {
+    const user = usernameEl.value.trim();
+    const pass = passwordEl.value.trim();
+    if(!user || !pass){ alert('Enter username and password'); return; }
 
-  const storedPassword = localStorage.getItem(username);
-
-  if (storedPassword === password) {
-    window.location.href = "app.html";
-  } else {
-    alert("Invalid username or password!");
-  }
+    const stored = JSON.parse(localStorage.getItem('users')||'{}');
+    if(stored[user]){ alert('User already exists'); return; }
+    stored[user]=pass;
+    localStorage.setItem('users', JSON.stringify(stored));
+    alert('Registered successfully! You can now login.');
 });
