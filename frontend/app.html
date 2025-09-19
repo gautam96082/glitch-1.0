@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feynman Technique Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="title">
+    <header class="app-header">
+      <h1 id="title">Feynman Technique Assistant</h1>
+      <button id="logoutBtn" class="btn-secondary small-btn">Logout</button>
+    </header>
+    <p class="tag">Concept ko simple banane me madad kare — likho, simplify karo, aur seekho.</p>
+
+    <label for="concept">Concept (chhota naam)</label>
+    <input id="concept" type="text" placeholder="e.g., Quantum Entanglement">
+
+    <label for="explanation">Your Explanation</label>
+    <textarea id="explanation" placeholder="Apne shabdon me samjhao..."></textarea>
+
+    <div class="controls">
+      <button id="simplifyBtn" class="btn-primary">Simplify</button>
+      <button id="autoSimplifyBtn" class="btn-secondary">Auto-simplify</button>
+      <button id="clearBtn" class="btn-clear">Clear</button>
+    </div>
+
+    <div class="output-area">
+      <div class="meta">
+        <span class="small">Highlighted Output</span>
+        <span id="jargonCount" class="small"></span>
+        <span id="readScore" class="small" style="margin-left:auto;"></span>
+      </div>
+      <div id="outputBox" class="box"></div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
